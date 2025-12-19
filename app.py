@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from collections import defaultdict
 
-st.set_page_config(page_title="UBO Calculator", layout="wide")
+st.set_page_config(page_title="Ultimate Benificial Owner Calculator", layout="wide")
 st.title("UBO Calculator")
 
 # Session State dataframes
