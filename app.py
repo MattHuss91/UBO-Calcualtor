@@ -1,8 +1,10 @@
 import streamlit as st
 import pandas as pd
 from collections import defaultdict
+import graphviz
+import io
 
-st.set_page_config(page_title="Ultimate Beneficial Owner Calculator", layout="wide")
+st.set_page_config(page_title="UBO Calculator", layout="wide")
 st.title("Ultimate Beneficial Owner Calculator")
 
 # Session State dataframes
@@ -100,6 +102,21 @@ def ownership_sums_per_entity(relationships: pd.DataFrame):
   sums = df.groupby('OwnedID')['OwnershipPct'].sum().reset_index() 
   return sums
 
+def get_relationship_status(owner_id: str, owned_id: str, relationships: pd.DataFrame):
+  """Check if an entity is a shareholder, director, or both"""
+  rels = relationships[(relationships['OwnerID'] == owner_id) & (relationships['OwnedID'] == owned_id)]
+  
+  has_equity = any(rels['RelationshipType'] == 'Equity')
+  has_directorship = any(rels['RelationshipType'] == 'Directorship')
+  
+  if has_equity and has_directorship:
+    return "both"
+  elif has_equity:
+    return "shareholder"
+  elif has_directorship:
+    return "director"
+  return None
+
 def make_dot(entities: pd.DataFrame, relationships: pd.DataFrame, target: str): 
   names = entities.set_index('EntityID')['Name'].to_dict() 
   types = entities.set_index('EntityID')['Type'].to_dict() 
@@ -122,24 +139,62 @@ def make_dot(entities: pd.DataFrame, relationships: pd.DataFrame, target: str):
       style = company_style if row['Type'] == 'Company' else person_style 
       label = names.get(eid, eid)
       
+      # Add type label
+      type_label = "Company" if row['Type'] == 'Company' else "Person"
+      
       # Add ultimate ownership to label if this entity owns the target
       if eid in ultimate_ownership and eid != target:
         ult_pct = ultimate_ownership[eid]['UltimateOwnership'] * 100
-        label = f"{label}\\n({ult_pct:.2f}% of target)"
+        label = f"{label}\\n[{type_label}]\\n({ult_pct:.2f}% of target)"
+      else:
+        label = f"{label}\\n[{type_label}]"
       
       dot_lines.append(f"\"{eid}\" [{style}, label=\"{label}\"];") 
     dot_lines.append("}") 
 
-  # Edges with labels
-  for _, r in relationships.iterrows(): 
-    owner, owned, reltype = r['OwnerID'], r['OwnedID'], r['RelationshipType'] 
-    if reltype == 'Equity': 
-      pct = float(r['OwnershipPct']) * 100
-      dot_lines.append(f"\"{owner}\" -> \"{owned}\" [label=\"{pct:.1f}%\", arrowsize=0.8];") 
-    else:  # Directorship 
-      dot_lines.append(f"\"{owner}\" -> \"{owned}\" [style=dashed, arrowsize=0.6, color=\"#7f8c8d\", label=\"director\"];") 
+  # Process relationships - group by owner-owned pair
+  relationship_pairs = {}
+  for _, r in relationships.iterrows():
+    key = (r['OwnerID'], r['OwnedID'])
+    if key not in relationship_pairs:
+      relationship_pairs[key] = {'equity': None, 'directorship': False}
+    
+    if r['RelationshipType'] == 'Equity':
+      relationship_pairs[key]['equity'] = float(r['OwnershipPct'])
+    else:
+      relationship_pairs[key]['directorship'] = True
+
+  # Edges with combined labels
+  for (owner, owned), rels in relationship_pairs.items():
+    labels = []
+    
+    if rels['equity'] is not None:
+      pct = rels['equity'] * 100
+      labels.append(f"{pct:.1f}% equity")
+    
+    if rels['directorship']:
+      labels.append("director")
+    
+    label_text = " + ".join(labels)
+    
+    # Use solid line if any equity, dashed if only directorship
+    if rels['equity'] is not None:
+      dot_lines.append(f"\"{owner}\" -> \"{owned}\" [label=\"{label_text}\", arrowsize=0.8];")
+    else:
+      dot_lines.append(f"\"{owner}\" -> \"{owned}\" [style=dashed, arrowsize=0.6, color=\"#7f8c8d\", label=\"{label_text}\"];")
+  
   dot_lines.append("}") 
   return "\n".join(dot_lines)
+
+def render_diagram_to_png(dot_string: str):
+  """Render DOT string to PNG bytes"""
+  try:
+    graph = graphviz.Source(dot_string)
+    png_bytes = graph.pipe(format='png')
+    return png_bytes
+  except Exception as e:
+    st.error(f"Error rendering diagram: {e}")
+    return None
 
 # Side Bar
 st.sidebar.header("Settings") 
@@ -248,7 +303,7 @@ with col1:
       owned_name = entity_names.get(row['OwnedID'], row['OwnedID'])
       if row['RelationshipType'] == 'Equity':
         pct = f"{row['OwnershipPct']*100:.1f}%"
-        rel_labels.append(f"{owner_name} → {owned_name} ({pct})")
+        rel_labels.append(f"{owner_name} → {owned_name} ({pct} equity)")
       else:
         rel_labels.append(f"{owner_name} → {owned_name} (Director)")
     
@@ -325,8 +380,23 @@ with col2:
       ult_df['Ownership %'] = (ult_df['UltimateOwnership'] * 100).round(2)
       ult_df = ult_df.sort_values('UltimateOwnership', ascending=False)
       
+      # Add relationship status
+      status_list = []
+      for _, row in ult_df.iterrows():
+        status = get_relationship_status(row['EntityID'], st.session_state.target_company, relationships)
+        if status == "both":
+          status_list.append("Shareholder & Director")
+        elif status == "shareholder":
+          status_list.append("Shareholder")
+        elif status == "director":
+          status_list.append("Director Only")
+        else:
+          status_list.append("Indirect Owner")
+      
+      ult_df['Status'] = status_list
+      
       st.dataframe(
-        ult_df[['Name', 'Type', 'Ownership %']].rename(columns={'Name':'Entity', 'Ownership %':'Ultimate Ownership %'}),
+        ult_df[['Name', 'Type', 'Ownership %', 'Status']].rename(columns={'Name':'Entity', 'Ownership %':'Ultimate Ownership %'}),
         use_container_width=True,
         height=400
       )
@@ -373,6 +443,16 @@ with col3:
   if not entities.empty and st.session_state.target_company:
     dot = make_dot(entities, relationships, st.session_state.target_company) 
     st.graphviz_chart(dot, use_container_width=True)
+    
+    # Download diagram as PNG
+    png_data = render_diagram_to_png(dot)
+    if png_data:
+      st.download_button(
+        label="Download Diagram (PNG)",
+        data=png_data,
+        file_name="ownership_diagram.png",
+        mime="image/png"
+      )
   elif not entities.empty:
     st.info("Select a target company to show ultimate ownership.")
   else:
