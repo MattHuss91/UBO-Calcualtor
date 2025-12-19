@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 from collections import defaultdict
 
-st.set_page_config(page_title="Ultimate Benificial Owner Calculator", layout="wide")
-st.title("UBO Calculator")
+st.set_page_config(page_title="Ultimate Beneficial Owner Calculator", layout="wide")
+st.title("Ultimate Beneficial Owner Calculator")
 
 # Session State dataframes
 if "entities" not in st.session_state: 
@@ -180,6 +180,45 @@ with col1:
         st.success(f"Added: {name}") 
         st.rerun()
 
+  # Edit/Delete Entities
+  if not entities.empty:
+    st.divider()
+    st.subheader("Edit or delete entities")
+    entity_to_edit = st.selectbox("Select entity", entities['Name'].tolist(), key="entity_edit_select")
+    
+    if entity_to_edit:
+      entity_row = entities[entities['Name'] == entity_to_edit].iloc[0]
+      
+      with st.form("edit_entity"):
+        new_name = st.text_input("Name", value=entity_row['Name'])
+        new_type = st.radio("Type", ["Company","Person"], index=0 if entity_row['Type']=='Company' else 1, horizontal=True)
+        new_layer = st.number_input("Layer", min_value=0, max_value=10, value=int(entity_row['Layer']))
+        
+        col_update, col_delete = st.columns(2)
+        with col_update:
+          update_btn = st.form_submit_button("Update", type="primary")
+        with col_delete:
+          delete_btn = st.form_submit_button("Delete", type="secondary")
+        
+        if update_btn:
+          idx = entities[entities['EntityID'] == entity_row['EntityID']].index[0]
+          st.session_state.entities.at[idx, 'Name'] = new_name
+          st.session_state.entities.at[idx, 'Type'] = new_type
+          st.session_state.entities.at[idx, 'Layer'] = new_layer
+          st.success(f"Updated: {new_name}")
+          st.rerun()
+        
+        if delete_btn:
+          # Remove entity
+          st.session_state.entities = entities[entities['EntityID'] != entity_row['EntityID']].reset_index(drop=True)
+          # Remove related relationships
+          st.session_state.relationships = relationships[
+            (relationships['OwnerID'] != entity_row['EntityID']) & 
+            (relationships['OwnedID'] != entity_row['EntityID'])
+          ].reset_index(drop=True)
+          st.success(f"Deleted: {entity_row['Name']}")
+          st.rerun()
+
   st.divider() 
   st.subheader("Add relationships") 
   owners = list(entities['EntityID']) if not entities.empty else []
@@ -195,6 +234,60 @@ with col1:
       st.session_state.relationships = pd.concat([relationships, new_row], ignore_index=True)
       st.success("Relationship added") 
       st.rerun()
+
+  # Edit/Delete Relationships
+  if not relationships.empty:
+    st.divider()
+    st.subheader("Edit or delete relationships")
+    
+    # Create readable relationship labels
+    rel_labels = []
+    entity_names = entities.set_index('EntityID')['Name'].to_dict()
+    for idx, row in relationships.iterrows():
+      owner_name = entity_names.get(row['OwnerID'], row['OwnerID'])
+      owned_name = entity_names.get(row['OwnedID'], row['OwnedID'])
+      if row['RelationshipType'] == 'Equity':
+        pct = f"{row['OwnershipPct']*100:.1f}%"
+        rel_labels.append(f"{owner_name} → {owned_name} ({pct})")
+      else:
+        rel_labels.append(f"{owner_name} → {owned_name} (Director)")
+    
+    rel_to_edit = st.selectbox("Select relationship", rel_labels, key="rel_edit_select")
+    
+    if rel_to_edit:
+      rel_idx = rel_labels.index(rel_to_edit)
+      rel_row = relationships.iloc[rel_idx]
+      
+      with st.form("edit_relationship"):
+        new_reltype = st.radio("Type", ["Equity","Directorship"], 
+                               index=0 if rel_row['RelationshipType']=='Equity' else 1, 
+                               horizontal=True)
+        new_owner = st.selectbox("Owner", list(entities['EntityID']), 
+                                index=list(entities['EntityID']).index(rel_row['OwnerID']))
+        new_owned = st.selectbox("Owned", list(entities['EntityID']), 
+                                index=list(entities['EntityID']).index(rel_row['OwnedID']))
+        new_pct = st.number_input("Ownership %", min_value=0.0, max_value=100.0, 
+                                  value=float(rel_row['OwnershipPct']*100) if rel_row['OwnershipPct'] is not None else 25.0, 
+                                  step=1.0)
+        
+        col_update, col_delete = st.columns(2)
+        with col_update:
+          update_rel_btn = st.form_submit_button("Update", type="primary")
+        with col_delete:
+          delete_rel_btn = st.form_submit_button("Delete", type="secondary")
+        
+        if update_rel_btn:
+          st.session_state.relationships.at[rel_idx, 'OwnerID'] = new_owner
+          st.session_state.relationships.at[rel_idx, 'OwnedID'] = new_owned
+          st.session_state.relationships.at[rel_idx, 'RelationshipType'] = new_reltype
+          st.session_state.relationships.at[rel_idx, 'OwnershipPct'] = None if new_reltype!="Equity" else new_pct/100.0
+          st.success("Relationship updated")
+          st.rerun()
+        
+        if delete_rel_btn:
+          st.session_state.relationships = relationships.drop(rel_idx).reset_index(drop=True)
+          st.success("Relationship deleted")
+          st.rerun()
   
   st.divider() 
   st.subheader("Quick helper: equal-share directors") 
