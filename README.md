@@ -138,13 +138,5 @@
     <li>Maximum 10 visual layers for diagram clarity</li>
 </ul>
 
-<h2>Support</h2>
-
-<p>For issues or questions about this tool, please contact your IT department or the development team.</p>
-
-<h2>Licence</h2>
-
-<p>Internal use only. Not for redistribution outside the organisation.</p>
-
 </body>
 </html>
