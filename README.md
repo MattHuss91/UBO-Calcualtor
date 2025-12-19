@@ -1,95 +1,223 @@
-UBO Calculator
-A web-based tool for calculating Ultimate Beneficial Ownership (UBO) in multi-layered business structures.
-Overview
-The UBO Calculator helps staff and management identify ultimate beneficial owners across complex corporate structures. It automatically traces ownership through multiple layers of companies and calculates each person's or entity's ultimate ownership percentage in the target business.
-Key Features
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UBO Calculator - Project Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #1f5f7a;
+            border-bottom: 3px solid #f28c28;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #1f5f7a;
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        ul, ol {
+            margin-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .feature-list li:before {
+            content: "✓ ";
+            color: #f28c28;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        .example-box {
+            background-color: #f9f9f9;
+            border-left: 4px solid #f28c28;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .tech-stack {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .tech-badge {
+            background-color: #1f5f7a;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
 
-Visual ownership diagrams - Clear graphical representation of ownership structures with colour-coded entities (blue for companies, orange for people)
-Automatic UBO calculation - Traces ownership paths through multiple layers and calculates ultimate ownership percentages
-Dual relationship tracking - Records both equity ownership and directorship roles
-Layer organisation - Arrange entities in visual layers for clear hierarchy display
-Validation checks - Automatic validation that ownership percentages sum correctly
-Data export - Download entities, relationships, ultimate ownership data and diagrams as CSV/PNG files
-Quick setup tools - Helper function to create multiple equal-share directors in one step
+<h1>UBO Calculator</h1>
 
-Use Cases
-This tool is designed for:
+<p>A web-based tool for calculating Ultimate Beneficial Ownership (UBO) in multi-layered business structures.</p>
 
-Compliance teams verifying beneficial ownership for regulatory requirements
-Due diligence during mergers and acquisitions
-Legal teams mapping corporate structures
-Management reviewing ownership positions
-Anyone needing to understand complex multi-tier ownership structures
+<h2>Overview</h2>
 
-Benefits
+<p>The UBO Calculator helps staff and management identify ultimate beneficial owners across complex corporate structures. It automatically traces ownership through multiple layers of companies and calculates each person's or entity's ultimate ownership percentage in the target business.</p>
 
-Reduces human error - Automated calculations eliminate manual arithmetic mistakes
-Improves efficiency - Complex ownership structures calculated instantly
-Reduces completion time - Tasks that previously took hours now take minutes
-Clear understanding - Visual diagrams make complex structures easy to comprehend
-Audit trail - Export all data for documentation and compliance purposes
+<h2>Key Features</h2>
 
-How It Works
+<ul class="feature-list">
+    <li><strong>Visual ownership diagrams</strong> - Clear graphical representation of ownership structures with colour-coded entities (blue for companies, orange for people)</li>
+    <li><strong>Automatic UBO calculation</strong> - Traces ownership paths through multiple layers and calculates ultimate ownership percentages</li>
+    <li><strong>Dual relationship tracking</strong> - Records both equity ownership and directorship roles</li>
+    <li><strong>Layer organisation</strong> - Arrange entities in visual layers for clear hierarchy display</li>
+    <li><strong>Validation checks</strong> - Automatic validation that ownership percentages sum correctly</li>
+    <li><strong>Data export</strong> - Download entities, relationships, ultimate ownership data and diagrams as CSV/PNG files</li>
+    <li><strong>Quick setup tools</strong> - Helper function to create multiple equal-share directors in one step</li>
+</ul>
 
-Add entities - Create companies and people in your ownership structure
-Define relationships - Set up equity ownership percentages and directorship roles
-Set target company - Select which business you want to analyse
-View results - See ultimate ownership percentages and visual diagram automatically
+<h2>Use Cases</h2>
 
-Example
-If Matt Ltd is owned 50% by yourself and 50% by Matt Holdings, and Matt Holdings is owned 25% by Claude and 75% by Mike, the calculator will show:
+<p>This tool is designed for:</p>
+<ul>
+    <li>Compliance teams verifying beneficial ownership for regulatory requirements</li>
+    <li>Due diligence during mergers and acquisitions</li>
+    <li>Legal teams mapping corporate structures</li>
+    <li>Management reviewing ownership positions</li>
+    <li>Anyone needing to understand complex multi-tier ownership structures</li>
+</ul>
 
-You: 50% of Matt Ltd
-Claude: 12.5% of Matt Ltd (25% × 50%)
-Mike: 37.5% of Matt Ltd (75% × 50%)
+<h2>Benefits</h2>
 
-Getting Started
-Running Locally
+<ul class="feature-list">
+    <li><strong>Reduces human error</strong> - Automated calculations eliminate manual arithmetic mistakes</li>
+    <li><strong>Improves efficiency</strong> - Complex ownership structures calculated instantly</li>
+    <li><strong>Reduces completion time</strong> - Tasks that previously took hours now take minutes</li>
+    <li><strong>Clear understanding</strong> - Visual diagrams make complex structures easy to comprehend</li>
+    <li><strong>Audit trail</strong> - Export all data for documentation and compliance purposes</li>
+</ul>
 
-Install Python dependencies:
+<h2>How It Works</h2>
 
-bashpip install -r requirements.txt
+<ol>
+    <li><strong>Add entities</strong> - Create companies and people in your ownership structure</li>
+    <li><strong>Define relationships</strong> - Set up equity ownership percentages and directorship roles</li>
+    <li><strong>Set target company</strong> - Select which business you want to analyse</li>
+    <li><strong>View results</strong> - See ultimate ownership percentages and visual diagram automatically</li>
+</ol>
 
-Run the application:
+<h3>Example</h3>
 
-bashstreamlit run app.py
+<div class="example-box">
+    <p>If Matt Ltd is owned 50% by yourself and 50% by Matt Holdings, and Matt Holdings is owned 25% by Claude and 75% by Mike, the calculator will show:</p>
+    <ul>
+        <li>You: 50% of Matt Ltd</li>
+        <li>Claude: 12.5% of Matt Ltd (25% × 50%)</li>
+        <li>Mike: 37.5% of Matt Ltd (75% × 50%)</li>
+    </ul>
+</div>
 
-Open your browser to http://localhost:8501
+<h2>Getting Started</h2>
 
-Deploying to Streamlit Cloud
+<h3>Running Locally</h3>
 
-Push your code to GitHub
-Connect your repository to Streamlit Cloud
-Deploy with the following files:
+<ol>
+    <li>Install Python dependencies:
+<pre><code>pip install -r requirements.txt</code></pre>
+    </li>
+    <li>Run the application:
+<pre><code>streamlit run app.py</code></pre>
+    </li>
+    <li>Open your browser to <code>http://localhost:8501</code></li>
+</ol>
 
-app.py - Main application
-requirements.txt - Python dependencies
-packages.txt - System dependencies
+<h3>Deploying to Streamlit Cloud</h3>
 
+<ol>
+    <li>Push your code to GitHub</li>
+    <li>Connect your repository to Streamlit Cloud</li>
+    <li>Deploy with the following files:
+        <ul>
+            <li><code>app.py</code> - Main application</li>
+            <li><code>requirements.txt</code> - Python dependencies</li>
+            <li><code>packages.txt</code> - System dependencies</li>
+        </ul>
+    </li>
+</ol>
 
+<h2>Data Privacy</h2>
 
-Data Privacy
+<ul class="feature-list">
+    <li><strong>No persistent storage</strong> - All data exists only in your browser session</li>
+    <li><strong>Session-based</strong> - Data resets when you close the browser tab or refresh</li>
+    <li><strong>No data transmission</strong> - Information never leaves your machine except via manual downloads</li>
+    <li><strong>Public data</strong> - Tool is designed for publicly available UBO information only</li>
+</ul>
 
-No persistent storage - All data exists only in your browser session
-Session-based - Data resets when you close the browser tab or refresh
-No data transmission - Information never leaves your machine except via manual downloads
-Public data - Tool is designed for publicly available UBO information only
+<p>This tool is safe for work use as it handles public beneficial ownership information that is typically available through Companies House or similar registries.</p>
 
-This tool is safe for work use as it handles public beneficial ownership information that is typically available through Companies House or similar registries.
-Technical Details
-Built with:
+<h2>Technical Details</h2>
 
-Streamlit - Web application framework
-Pandas - Data manipulation and analysis
-Graphviz - Diagram generation and visualisation
+<p>Built with:</p>
+<div class="tech-stack">
+    <span class="tech-badge">Streamlit</span>
+    <span class="tech-badge">Python</span>
+    <span class="tech-badge">Pandas</span>
+    <span class="tech-badge">Graphviz</span>
+</div>
 
-Requirements
+<h3>Core Technologies</h3>
+<ul>
+    <li><strong>Streamlit</strong> - Web application framework</li>
+    <li><strong>Pandas</strong> - Data manipulation and analysis</li>
+    <li><strong>Graphviz</strong> - Diagram generation and visualisation</li>
+</ul>
 
-Python 3.7+
-See requirements.txt for full dependency list
+<h2>Requirements</h2>
 
-Limitations
+<ul>
+    <li>Python 3.7+</li>
+    <li>See <code>requirements.txt</code> for full dependency list</li>
+</ul>
 
-UBO threshold is adjustable (default 25%) but must be set before analysis
-Circular ownership structures are not supported
-Maximum 10 visual layers for diagram clarity
+<h2>Limitations</h2>
+
+<ul>
+    <li>UBO threshold is adjustable (default 25%) but must be set before analysis</li>
+    <li>Circular ownership structures are not supported</li>
+    <li>Maximum 10 visual layers for diagram clarity</li>
+</ul>
+
+<h2>Support</h2>
+
+<p>For issues or questions about this tool, please contact your IT department or the development team.</p>
+
+<h2>Licence</h2>
+
+<p>Internal use only. Not for redistribution outside the organisation.</p>
+
+</body>
+</html>
