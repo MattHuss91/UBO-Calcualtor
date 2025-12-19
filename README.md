@@ -3,82 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UBO Calculator - Project Documentation</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            color: #333;
-        }
-        h1 {
-            color: #1f5f7a;
-            border-bottom: 3px solid #f28c28;
-            padding-bottom: 10px;
-        }
-        h2 {
-            color: #1f5f7a;
-            margin-top: 30px;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 5px;
-        }
-        h3 {
-            color: #2c3e50;
-            margin-top: 20px;
-        }
-        code {
-            background-color: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-        }
-        pre {
-            background-color: #f4f4f4;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-        }
-        ul, ol {
-            margin-left: 20px;
-        }
-        li {
-            margin-bottom: 8px;
-        }
-        .feature-list {
-            list-style-type: none;
-            padding-left: 0;
-        }
-        .feature-list li:before {
-            content: "✓ ";
-            color: #f28c28;
-            font-weight: bold;
-            margin-right: 8px;
-        }
-        .example-box {
-            background-color: #f9f9f9;
-            border-left: 4px solid #f28c28;
-            padding: 15px;
-            margin: 20px 0;
-        }
-        .tech-stack {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-        .tech-badge {
-            background-color: #1f5f7a;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 14px;
-        }
-    </style>
+    
 </head>
 <body>
-
 <h1>UBO Calculator</h1>
 
 <p>A web-based tool for calculating Ultimate Beneficial Ownership (UBO) in multi-layered business structures.</p>
