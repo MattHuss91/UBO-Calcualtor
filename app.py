@@ -39,6 +39,29 @@ def find_paths(source: str, target: str, adj: dict):
       stack.append((child, path + [child], product * pct)) 
   return out
 
+def compute_all_ultimate_ownership(entities: pd.DataFrame, relationships: pd.DataFrame, target: str):
+  """Calculate ultimate ownership of target for ALL entities (not just above threshold)"""
+  adj = build_adj(relationships, rel_type="Equity") 
+  all_entity_ids = set(entities['EntityID'])
+  entity_names = entities.set_index("EntityID")["Name"].to_dict()
+  entity_types = entities.set_index("EntityID")["Type"].to_dict()
+  
+  # Calculate for every entity
+  ultimate_ownership = {}
+  
+  for entity_id in all_entity_ids:
+    paths = find_paths(entity_id, target, adj)
+    total_ownership = sum(prod for _, prod in paths)
+    if total_ownership > 0:
+      ultimate_ownership[entity_id] = {
+        'EntityID': entity_id,
+        'Name': entity_names.get(entity_id, entity_id),
+        'Type': entity_types.get(entity_id, 'Unknown'),
+        'UltimateOwnership': total_ownership
+      }
+  
+  return ultimate_ownership
+
 def compute_ubo(entities: pd.DataFrame, relationships: pd.DataFrame, target: str, threshold: float): 
   adj = build_adj(relationships, rel_type="Equity") 
   sources = sorted(set(relationships[relationships["RelationshipType"]=="Equity"]["OwnerID"])) 
@@ -77,16 +100,19 @@ def ownership_sums_per_entity(relationships: pd.DataFrame):
   sums = df.groupby('OwnedID')['OwnershipPct'].sum().reset_index() 
   return sums
 
-def make_dot(entities: pd.DataFrame, relationships: pd.DataFrame): 
+def make_dot(entities: pd.DataFrame, relationships: pd.DataFrame, target: str): 
   names = entities.set_index('EntityID')['Name'].to_dict() 
   types = entities.set_index('EntityID')['Type'].to_dict() 
   layers = entities.set_index('EntityID')['Layer'].to_dict() 
+  
+  # Calculate ultimate ownership
+  ultimate_ownership = compute_all_ultimate_ownership(entities, relationships, target)
 
   # Node styling 
   company_style = 'shape=box, style=filled, color=white, fontcolor=white, fillcolor="#1f5f7a"' 
   person_style = 'shape=box, style=filled, color=white, fontcolor=white, fillcolor="#f28c28"' 
 
-  dot_lines = ["digraph G {", "rankdir=TB", "splines=true", "fontname=Helvetica", "node [fontname=Helvetica]", "edge [fontname=Helvetica, color=\"#2c3e50\"]"] 
+  dot_lines = ["digraph G {", "rankdir=TB", "splines=true", "fontname=Helvetica", "node [fontname=Helvetica, fontsize=10]", "edge [fontname=Helvetica, color=\"#2c3e50\", fontsize=9]"] 
 
   # Subgraphs to keep same ranks for each layer 
   max_layer = int(entities['Layer'].max()) if not entities.empty else 0 
@@ -95,6 +121,12 @@ def make_dot(entities: pd.DataFrame, relationships: pd.DataFrame):
     for eid, row in entities[entities['Layer']==L].set_index('EntityID').iterrows(): 
       style = company_style if row['Type'] == 'Company' else person_style 
       label = names.get(eid, eid)
+      
+      # Add ultimate ownership to label if this entity owns the target
+      if eid in ultimate_ownership and eid != target:
+        ult_pct = ultimate_ownership[eid]['UltimateOwnership'] * 100
+        label = f"{label}\\n({ult_pct:.2f}% of target)"
+      
       dot_lines.append(f"\"{eid}\" [{style}, label=\"{label}\"];") 
     dot_lines.append("}") 
 
@@ -102,8 +134,8 @@ def make_dot(entities: pd.DataFrame, relationships: pd.DataFrame):
   for _, r in relationships.iterrows(): 
     owner, owned, reltype = r['OwnerID'], r['OwnedID'], r['RelationshipType'] 
     if reltype == 'Equity': 
-      pct = int(round(float(r['OwnershipPct'])*100)) 
-      dot_lines.append(f"\"{owner}\" -> \"{owned}\" [label=\"{pct}%\", arrowsize=0.8];") 
+      pct = float(r['OwnershipPct']) * 100
+      dot_lines.append(f"\"{owner}\" -> \"{owned}\" [label=\"{pct:.1f}%\", arrowsize=0.8];") 
     else:  # Directorship 
       dot_lines.append(f"\"{owner}\" -> \"{owned}\" [style=dashed, arrowsize=0.6, color=\"#7f8c8d\", label=\"director\"];") 
   dot_lines.append("}") 
@@ -126,7 +158,7 @@ company_options = list(entities[entities['Type']=='Company']['EntityID']) if not
 if "target_company" not in st.session_state: 
   st.session_state.target_company = company_options[0] if company_options else None 
 if company_options:
-  st.sidebar.selectbox("Target company (final owned entity)", company_options, index=company_options.index(st.session_state.target_company) if st.session_state.target_company in company_options else 0, key="target_company")
+  st.sidebar.selectbox("Target company (our business)", company_options, index=company_options.index(st.session_state.target_company) if st.session_state.target_company in company_options else 0, key="target_company")
 
 # Layout columns: Inputs | Explanation | Diagram 
 col1, col2, col3 = st.columns([1, 1, 1]) 
@@ -188,34 +220,52 @@ with col1:
       st.rerun()
 
 with col2: 
-  st.subheader("Ownership explained (all paths → product of %s)") 
   if st.session_state.target_company:
+    st.subheader(f"Ultimate ownership of: {entities[entities['EntityID']==st.session_state.target_company]['Name'].values[0] if not entities.empty else 'Target'}")
+    
+    # Calculate ultimate ownership for all entities
+    ultimate_ownership = compute_all_ultimate_ownership(entities, relationships, st.session_state.target_company)
+    
+    if ultimate_ownership:
+      ult_df = pd.DataFrame(ultimate_ownership.values())
+      ult_df = ult_df[ult_df['EntityID'] != st.session_state.target_company]  # Don't show target owning itself
+      ult_df['Ownership %'] = (ult_df['UltimateOwnership'] * 100).round(2)
+      ult_df = ult_df.sort_values('UltimateOwnership', ascending=False)
+      
+      st.dataframe(
+        ult_df[['Name', 'Type', 'Ownership %']].rename(columns={'Name':'Entity', 'Ownership %':'Ultimate Ownership %'}),
+        use_container_width=True,
+        height=400
+      )
+    else:
+      st.info("No ownership paths found to target.")
+    
+    st.divider()
+    st.subheader("Detailed paths (for verification)")
     agg, paths = compute_ubo(entities, relationships, st.session_state.target_company, threshold) 
-    if paths.empty: 
-      st.info("No equity paths found to the target.") 
-    else: 
+    if not paths.empty: 
       df_show = paths.copy() 
       df_show['Path %'] = (df_show['PathOwnershipPct']*100).round(2) 
-      st.dataframe(df_show[['OwnerName','PathNames','Path %']].rename(columns={'OwnerName':'Owner','PathNames':'Path'}), use_container_width=True, height=330) 
-
+      st.dataframe(df_show[['OwnerName','PathNames','Path %']].rename(columns={'OwnerName':'Owner','PathNames':'Path'}), use_container_width=True, height=250) 
+    
     st.divider() 
-    st.subheader("Aggregated ownership & UBO flag") 
-    if agg.empty: 
-      st.info("No owners found.") 
-    else: 
+    st.subheader(f"UBO flag (≥{threshold*100:.0f}% threshold)") 
+    if not agg.empty: 
       show = agg.copy() 
       show['Aggregated %'] = (show['AggregatedOwnershipPct']*100).round(2) 
-      st.dataframe(show[['OwnerName','Aggregated %','UBO_Flag']].rename(columns={'OwnerName':'Owner','UBO_Flag':'UBO ≥ threshold'}), use_container_width=True, height=220) 
+      st.dataframe(show[['OwnerName','Aggregated %','UBO_Flag']].rename(columns={'OwnerName':'Owner','UBO_Flag':'Is UBO'}), use_container_width=True, height=180) 
+    else:
+      st.info("No owners found.")
   else:
     st.info("Add a company entity to begin.")
 
   st.divider() 
-  st.subheader("Validation: sum of equity into each owned entity") 
+  st.subheader("Validation: direct equity sums") 
   sums = ownership_sums_per_entity(relationships) 
   if len(sums):
     sums['Sum %'] = (sums['OwnershipPct']*100).round(2) 
     sums['Owned Name'] = sums['OwnedID'].map(entities.set_index('EntityID')['Name']) 
-    st.dataframe(sums[['Owned Name','Sum %']].rename(columns={'Owned Name':'Owned'}), use_container_width=True, height=180) 
+    st.dataframe(sums[['Owned Name','Sum %']].rename(columns={'Owned Name':'Entity'}), use_container_width=True, height=180) 
     warn_over = sums[sums['OwnershipPct']>1.0] 
     warn_under = sums[sums['OwnershipPct']<1.0] 
     if len(warn_over): 
@@ -227,9 +277,11 @@ with col2:
 
 with col3: 
   st.subheader("Ownership diagram") 
-  if not entities.empty:
-    dot = make_dot(entities, relationships) 
+  if not entities.empty and st.session_state.target_company:
+    dot = make_dot(entities, relationships, st.session_state.target_company) 
     st.graphviz_chart(dot, use_container_width=True)
+  elif not entities.empty:
+    st.info("Select a target company to show ultimate ownership.")
   else:
     st.info("No entities to display.")
 
@@ -243,10 +295,14 @@ with colB:
   if not relationships.empty:
     st.download_button("Download Relationships (CSV)", data=relationships.to_csv(index=False), file_name="relationships.csv", mime="text/csv") 
 with colC: 
-  if st.session_state.target_company and 'agg' in locals() and not agg.empty:
-    st.download_button("Download UBO Summary (CSV)", data=agg.to_csv(index=False), file_name="ubo_summary.csv", mime="text/csv") 
+  if st.session_state.target_company:
+    ultimate_ownership = compute_all_ultimate_ownership(entities, relationships, st.session_state.target_company)
+    if ultimate_ownership:
+      ult_df = pd.DataFrame(ultimate_ownership.values())
+      ult_df = ult_df[ult_df['EntityID'] != st.session_state.target_company]
+      st.download_button("Download Ultimate Ownership (CSV)", data=ult_df.to_csv(index=False), file_name="ultimate_ownership.csv", mime="text/csv")
 with colD: 
   if st.session_state.target_company and 'paths' in locals() and not paths.empty:
-    st.download_button("Download Paths (CSV)", data=paths.to_csv(index=False), file_name="ubo_paths.csv", mime="text/csv") 
+    st.download_button("Download All Paths (CSV)", data=paths.to_csv(index=False), file_name="ownership_paths.csv", mime="text/csv") 
 
 st.caption("Tip: For directors with equal shares, use the helper to generate people and equity links in one step.")
